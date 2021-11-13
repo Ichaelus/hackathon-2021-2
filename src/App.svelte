@@ -40,15 +40,14 @@
     let factor = Math.floor(source_size / destination_size)
     let transformed_blocks = []
 
-    for (let k = 0; k < img.width - source_size; k += step) {
-      for (let l = 0; l < img.height - source_size; l += step) {
+    for (let k = 0; k < img.canvas.width - source_size; k += step) {
+      for (let l = 0; l < img.canvas.height - source_size; l += step) {
         let SUnreduced = img.getImageData(k, l, source_size, source_size)
         let SGrayscaled = get_greyscale_image(SUnreduced)
-		let S = reduce(SGrayscaled, factor)
-
-		for (let [direction, angle] in candidates) {
-	    	transformed_blocks.push((k, l, direction, angle, apply_transformation(S, direction, angle)))
-		}
+		    let S = reduce(SGrayscaled, factor)
+        for (let [direction, angle] in candidates) {
+            transformed_blocks.push([k, l, direction, angle, apply_transformation(S, direction, angle)])
+        }
       }
     }
 
