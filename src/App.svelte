@@ -1,24 +1,22 @@
 <script>
 	function convertImgToCanvas(){
-		var myImgElement = document.getElementById("srcimage");
-		var myCanvasElement = document.getElementById("convertedimage");
-		//myCanvasElement.width = myImgElement.width;
-		//myCanvasElement.height = myImgElement.height;
-		var context = myCanvasElement.getContext('2d');
-		context.drawImage(myImgElement,0,0);
-		console.log("test");  
+		const srcImage = document.getElementById("srcImage");
+
+		srcImage.onload = function() {
+      const convertedImage = document.getElementById("convertedImage");
+      const context = convertedImage.getContext('2d');
+
+      context.drawImage(srcImage, 0, 0);
+    };
 	}
 
-	document.addEventListener('DOMContentLoaded', convertImgToCanvas);
+  document.addEventListener("DOMContentLoaded", convertImgToCanvas);
 </script>
 
 <main>
 	<h1>Hackathon 2021</h1>
-	<button on:click={convertImgToCanvas}>
-		 Load
-	</button>
-	<img id="srcimage" src="images/monkey.gif" alt="">
-	<canvas id="convertedimage" width="256" height="256"></canvas>
+	<img id="srcImage" src="images/monkey.gif" alt="">
+	<canvas id="convertedImage" width="256" height="256"></canvas>
 </main>
 
 <style>
