@@ -54,7 +54,7 @@
         let SGrayscaled = get_greyscale_image(SUnreduced)
 		    let S = reduce(SGrayscaled, factor)
         for (let [direction, angle] of candidates) {
-          transformed_blocks.push([k, l, direction, angle, apply_transformation(S, direction, angle)])
+          transformed_blocks.push([k/factor, l/factor, direction, angle, apply_transformation(S, direction, angle)])
         }
       }
     }
