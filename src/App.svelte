@@ -28,7 +28,7 @@
 			const convertedImage = document.getElementById("convertedImage");
 			const context = convertedImage.getContext("2d");
 
-			context.drawImage(srcImage, 0, 0);
+			context.drawImage(srcImage, 0, 0, 64, 64);
 		};
 	}
 
@@ -54,7 +54,7 @@
         let SGrayscaled = get_greyscale_image(SUnreduced)
 		    let S = reduce(SGrayscaled, factor)
         for (let [direction, angle] of candidates) {
-          transformed_blocks.push([k/factor, l/factor, direction, angle, apply_transformation(S, direction, angle)])
+          transformed_blocks.push([k/8, l/8, direction, angle, apply_transformation(S, direction, angle)])
         }
       }
     }
