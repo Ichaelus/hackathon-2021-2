@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { multiply, add, xgcd, zeros, reshape, subtract, zeros, mean, index, subset, square } from 'mathjs'
+	import { multiply, add, xgcd, zeros, reshape, subtract, mean, index, subset, square } from 'mathjs'
 
 	const directions = [1, -1]
 	const angles = [0, 90, 180, 270]
@@ -17,17 +17,17 @@
 		};
 	}
 
-  function reduce(S, factor) {
-	  const size = Math.floor(S.size / factor);
-	  let result = zeros(size)
-	  for (let i=0; i<size; i++) {
-		for (let j=0; j<size; j++) {
-			result[i][j] = MathJS.mean(MathJS.subset(S, MathJS.index([i*factor, j*factor], size)))
-		}
-	  }
+//   function reduce(S, factor) {
+// 	  const size = Math.floor(S.size / factor);
+// 	  let result = zeros(size)
+// 	  for (let i=0; i<size; i++) {
+// 		for (let j=0; j<size; j++) {
+// 			result[i][j] = mean(subset(S, index([i*factor, j*factor], size)))
+// 		}
+// 	  }
 
-	  return result
-  }
+// 	  return result
+//   }
 
   function generate_all_transformed_blocks(img, source_size, destination_size, step) {
     let factor = Math.floor(source_size / destination_size)
