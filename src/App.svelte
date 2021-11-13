@@ -13,11 +13,6 @@
 		};
 	}
 
-  function apply_transformation() {
-    // Done by other team
-  }
-
-
   function generate_all_transformed_blocks(img, source_size, destination_size, step) {
     let factor = Math.floor(source_size / destination_size)
     let transformed_blocks = []
@@ -28,7 +23,7 @@
         let SGrayscaled = get_greyscale_image(SUnreduced)
 
 
-        S = reduce(img[k*step:k*step+source_size,l*step:l*step+source_size], factor)
+        //S = reduce(img[k*step:k*step+source_size,l*step:l*step+source_size], factor)
       }
     }
     //   def generate_all_transformed_blocks(img, source_size, destination_size, step):
