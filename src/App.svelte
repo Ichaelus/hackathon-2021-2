@@ -120,7 +120,20 @@
     return transformations
   }
 
-	function decompress(transformations, source_size, destination_size, step, interations=8){
+  async function decompressDummyImage(){
+    fetch('monkey_test.json')
+      .then(response => response.json())
+      .then( (compressedImageData) => {
+        console.log(compressedImageData)
+        const { transformations, source_size, destination_size, step } = compressedImageData
+        const decompressedImages = decompress(transformations, source_size, destination_size, step)
+        debugger
+        // todo render images
+        console.log(decompressedImages)
+      })
+  }
+
+	function decompress(transformations, source_size, destination_size, step, iterations=8){
 	  // transformations: Matrix with transformation metadata at each point (x, y)
 	  // source_size: width and height of the uncompressed image
     // destination_size: compressed image dimensions
@@ -130,11 +143,11 @@
     const height = transformations.length * destination_size
     const width = transformations[0].length * destination_size
     let decompressedImages = []
-		for(let iteration = 0; i < iterations; i++){
+		for(let iteration = 0; iteration < iterations; iteration++){
 			console.log(`Starting iteration: ${iteration}`)
       let currentImage = zeros(height, width)
 			for(let y = 0; y < transformations.length; y++){
-				for(let x = 0; x < transformations[x].length; x++){
+				for(let x = 0; x < transformations[y].length; x++){
        		// Apply transformation
 					const [k, l, flip, angle, contrast, brightness] = transformations[y][x]
        		//S = reduce(iterations[-1][k*step:k*step+source_size,l*step:l*step+source_size], factor)
@@ -142,7 +155,7 @@
 					//currentImage[i*destination_size:(i+1)*destination_size,j*destination_size:(j+1)*destination_size] = D
 				}
 			}
-      decompressedImages.append(currentImage)
+      decompressedImages.push(currentImage)
 		}
 		return decompressedImages
 	}
@@ -209,6 +222,12 @@
 		<h2>Decompress</h2>
 		<canvas id="decompressedImage" width="256" height="256" />
 		<button on:click={decompress}> Decompress </button>
+	</div>
+
+  <div>
+		<h2>Decompress dummy image</h2>
+		<canvas width="256" height="256" />
+		<button on:click={decompressDummyImage}> Decompress monkey</button>
 	</div>
 </main>
 
