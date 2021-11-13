@@ -88,11 +88,7 @@
     for(let i = 0; i < img.data.length; i += rgbaSize, ctr++) {
       let [r, g, b, a] = img.data.slice(i, i+rgbaSize)
       // 255 red, 80 green, 22 blue, a = 0.2 => 119 * 0.2
-      imgData[ctr] = mean(
-        mean(r, a),
-        mean(g, a),
-        mean(b, a)
-      )
+      imgData[ctr] = mean(r, g, b)
     }
     return reshape(imgData, [img.height, img.width])
   }
