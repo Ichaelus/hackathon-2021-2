@@ -1,4 +1,6 @@
 <script>
+	import { onMount } from 'svelte';
+
 	function convertImgToCanvas() {
 		const srcImage = document.getElementById("srcImage");
 
@@ -16,6 +18,13 @@
 	function decompress() {}
 
 	document.addEventListener("DOMContentLoaded", convertImgToCanvas);
+
+	let fifPlaceholder = {
+		source_size: 8,
+	};
+
+	onMount(() => {
+	});
 </script>
 
 <main>
@@ -34,7 +43,7 @@
 
 	<div>
 		<h2>FIF</h2>
-		<textarea placeholder="Insert compressed image data"></textarea>
+		<textarea placeholder="Insert compressed image data">{fifPlaceholder}</textarea>
 	</div>
 
 	<div>
