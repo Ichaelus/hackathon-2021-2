@@ -1,10 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-<<<<<<< Updated upstream
-	import { multiply, add, zeros } from 'mathjs'
-=======
-	import { multiply, add, xgcd, subset, zeros, mean } from 'mathjs'
->>>>>>> Stashed changes
+	import { multiply, add, xgcd, subset, zeros, mean, transpose } from 'mathjs'
 
 	function convertImgToCanvas() {
 		const srcImage = document.getElementById("srcImage");
@@ -131,8 +127,22 @@
         console.log(compressedImageData)
         const { transformations, source_size, destination_size, step } = compressedImageData
         const decompressedImages = decompress(transformations, source_size, destination_size, step)
-        debugger
-        // todo render images
+        const canvas = document.getElementById('decompressedMonkey')
+        const ctx = canvas.getContext('2d')
+        const lastImage = decompressedImages[decompressedImages.length -1]
+        for(let y = 0; y < lastImage.length; y++){
+          for(let x = 0; x < lastImage[y].length; x++){
+            ctx.beginPath()
+            const grayScaleValue = Math.floor(lastImage[y][x])
+            ctx.fillStyle = `rgb(
+              ${grayScaleValue},
+              ${grayScaleValue},
+              ${grayScaleValue}
+            )`
+            ctx.fillRect(x, y, 1, 1)
+            ctx.fill()
+          }
+        }
         console.log(decompressedImages)
       })
   }
@@ -147,16 +157,23 @@
     const height = transformations.length * destination_size
     const width = transformations[0].length * destination_size
     let decompressedImages = []
+    decompressedImages.push(zeros(height, width)._data)
 		for(let iteration = 0; iteration < iterations; iteration++){
 			console.log(`Starting iteration: ${iteration}`)
-      let currentImage = zeros(height, width)
+      let currentImage = zeros(height, width)._data
 			for(let y = 0; y < transformations.length; y++){
 				for(let x = 0; x < transformations[y].length; x++){
        		// Apply transformation
-					const [k, l, flip, angle, contrast, brightness] = transformations[y][x]
-       		//S = reduce(iterations[-1][k*step:k*step+source_size,l*step:l*step+source_size], factor)
-       		//D = apply_transformation(S, flip, angle, contrast, brightness)
-					//currentImage[i*destination_size:(i+1)*destination_size,j*destination_size:(j+1)*destination_size] = D
+          const [sourceY, sourceX, flip, angle, contrast, brightness] = transformations[y][x]
+          const lastImage = decompressedImages[decompressedImages.length - 1]
+       		const reducedImage = reduce(matrixSubset(lastImage, sourceY * step, sourceY * step + source_size, sourceX * step, sourceX * step + source_size), factor)
+       		const transformedImage = apply_transformation(reducedImage, flip, angle, contrast, brightness)
+          
+          for(let dY = 0; dY < transformedImage.length; dY++) {
+            for(let dX = 0; dX < transformedImage[dY].length; dX++) {
+              currentImage[y * destination_size + dY][x * destination_size + dX] = transformedImage[dY][dX]
+            }
+          }
 				}
 			}
       decompressedImages.push(currentImage)
@@ -169,7 +186,7 @@
 		// direction: 1 or -1
 		// angle: 0, 90, 180, 270
 		const imageClone = img // flip and rotate operate in place
-		return add(multiply(rotate(flip(imgClone, direction), angle), contrast), brightness)
+		return add(multiply(rotate(flip(imageClone, direction), angle), contrast), brightness)
 	}
 
 	function matrixSubset(matrix, x1, x2, y1, y2) {
@@ -195,7 +212,7 @@
 		const rotations = Math.floor(angle / 90)
 		for(let i = 0; i < rotations; i++){
 			img.reverse()
-			img = math.transpose(img)
+			img = transpose(img)
 		}
 		return img
 	}
@@ -212,7 +229,6 @@
 
 	document.addEventListener("DOMContentLoaded", convertImgToCanvas);
 
-	debugger
 	let fifPlaceholder = {
 		source_size: 8,
 	};
@@ -248,7 +264,7 @@
 
   <div>
 		<h2>Decompress dummy image</h2>
-		<canvas width="256" height="256" />
+		<canvas id="decompressedMonkey" width="256" height="256" />
 		<button on:click={decompressDummyImage}> Decompress monkey</button>
 	</div>
 </main>
