@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { multiply, add } from 'mathjs'
+	import { multiply, add, zeros } from 'mathjs'
 
 	function convertImgToCanvas() {
 		const srcImage = document.getElementById("srcImage");
@@ -16,27 +16,31 @@
 
 	function compress() {}
 
-	function decompress(transformations, source_size, destination_size, step, nb_iter=8){
-  	factor = source_size // destination_size
-    height = len(transformations) * destination_size
-    width = len(transformations[0]) * destination_size
-    iterations = [np.random.randint(0, 256, (height, width))]
-    cur_img = np.zeros((height, width))
-		for(i_iter in range(nb_iter)){
-     	print(i_iter)
-			for(i in range(len(transformations))){
-				for(j in range(len(transformations[i]))){
-       		// Apply transform
-       		k, l, flip, angle, contrast, brightness = transformations[i][j]
+	function decompress(transformations, source_size, destination_size, step, interations=8){
+	  // transformations: Matrix with transformation metadata at each point (x, y)
+	  // source_size: width and height of the uncompressed image
+    // destination_size: compressed image dimensions
+		// step: minimum x/y translation of the transformation slices
+		// interations: decompression steps, higher is better (and slower)
+  	const factor = Math.floor(source_size / destination_size)
+    const height = transformations.length * destination_size
+    const width = transformations[0].length * destination_size
+    let decompressedImages = []
+		for(let iteration = 0; i < iterations; i++){
+			console.log(`Starting iteration: ${iteration}`)
+      let currentImage = zeros(height, width)
+			for(let y = 0; y < transformations.length; y++){
+				for(let x = 0; x < transformations[x].length; x++){
+       		// Apply transformation
+					const [k, l, flip, angle, contrast, brightness] = transformations[y][x]
        		//S = reduce(iterations[-1][k*step:k*step+source_size,l*step:l*step+source_size], factor)
        		//D = apply_transformation(S, flip, angle, contrast, brightness)
-					//cur_img[i*destination_size:(i+1)*destination_size,j*destination_size:(j+1)*destination_size] = D
+					//currentImage[i*destination_size:(i+1)*destination_size,j*destination_size:(j+1)*destination_size] = D
 				}
-     		iterations.append(cur_img)
-				cur_img = np.zeros((height, width))
 			}
+      decompressedImages.append(currentImage)
 		}
-		return iterations
+		return decompressedImages
 	}
 	
 	function apply_transformation(img, direction, angle, contrast = 1.0, brightness = 0.0){
