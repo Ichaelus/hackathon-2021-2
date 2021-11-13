@@ -2,6 +2,12 @@
 	import { onMount } from 'svelte';
 	import { multiply, add, xgcd, zeros, reshape, subtract, mean, index, subset, square } from 'mathjs'
 
+	function handleCompress() {
+		const convertedImage = document.getElementById("convertedImage");
+		const fifPlaceholder = compress(convertedImage, 8, 4, 8)
+		fifPlaceholder = JSON.stringify(fifPlaceholder)
+	}
+
 	const directions = [1, -1]
 	const angles = [0, 90, 180, 270]
 	const candidates = [[1, 0], [1, 90], [1, 180], [1, 270], [-1, 0], [-1, 90], [-1, 180], [-1, 270]]
@@ -57,8 +63,6 @@
 //       for(let width=0; width < img.width * rgbaSize; width += rgbaSize) {
 //         let sliceStart = height * img.width + width
 //         let [r, g, b, a] = img.data.slice(sliceStart, sliceStart + rgbaSize)
-
-//         debugger
 //         array.push(MathJS.mean(r, g, b) * a)
 //       }
 
@@ -217,7 +221,6 @@
 
 	document.addEventListener("DOMContentLoaded", convertImgToCanvas);
 
-	debugger
 	let fifPlaceholder = {
 		source_size: 8,
 	};
@@ -237,7 +240,7 @@
 	<div>
 		<h2>Compress</h2>
 		<canvas id="convertedImage" width="256" height="256" />
-		<button on:click={compress}> Compress </button>
+		<button on:click={handleCompress}> Compress </button>
 	</div>
 
 	<div>
