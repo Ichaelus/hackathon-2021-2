@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { multiply, add, xgcd, zeros, reshape, subtract, mean, index, subset, square, transpose } from 'mathjs'
+	import { multiply, add, zeros, reshape, subtract, mean, square, transpose, sum } from 'mathjs'
 
 	function handleCompress() {
 		const convertedImage = document.getElementById("convertedImage");
@@ -45,8 +45,8 @@
         let SUnreduced = img.getImageData(k, l, source_size, source_size)
         let SGrayscaled = get_greyscale_image(SUnreduced)
 		    let S = reduce(SGrayscaled, factor)
-        for (let [direction, angle] in candidates) {
-            transformed_blocks.push([k, l, direction, angle, apply_transformation(S, direction, angle)])
+        for (let [direction, angle] of candidates) {
+          transformed_blocks.push([k, l, direction, angle, apply_transformation(S, direction, angle)])
         }
       }
     }
@@ -131,7 +131,6 @@
         debugger
         // Test all possible transformations and take the best one
         for (let [k, l, direction, angle, S] of transformed_blocks) {
-          debugger
           let [contrast, brightness] = find_contrast_and_brightness(D, S)
           S = add(multiply(contrast, S), brightness)
           let d = sum(square(subtract(D, S)))
