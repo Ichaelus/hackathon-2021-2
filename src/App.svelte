@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { multiply, add } from 'mathjs'
 
 	function convertImgToCanvas() {
 		const srcImage = document.getElementById("srcImage");
@@ -15,7 +16,57 @@
 
 	function compress() {}
 
-	function decompress() {}
+	function decompress(transformations, source_size, destination_size, step, nb_iter=8){
+  	factor = source_size // destination_size
+    height = len(transformations) * destination_size
+    width = len(transformations[0]) * destination_size
+    iterations = [np.random.randint(0, 256, (height, width))]
+    cur_img = np.zeros((height, width))
+		for(i_iter in range(nb_iter)){
+     	print(i_iter)
+			for(i in range(len(transformations))){
+				for(j in range(len(transformations[i]))){
+       		// Apply transform
+       		k, l, flip, angle, contrast, brightness = transformations[i][j]
+       		//S = reduce(iterations[-1][k*step:k*step+source_size,l*step:l*step+source_size], factor)
+       		//D = apply_transformation(S, flip, angle, contrast, brightness)
+					//cur_img[i*destination_size:(i+1)*destination_size,j*destination_size:(j+1)*destination_size] = D
+				}
+     		iterations.append(cur_img)
+				cur_img = np.zeros((height, width))
+			}
+		}
+		return iterations
+	}
+	
+	function apply_transformation(img, direction, angle, contrast = 1.0, brightness = 0.0){
+		// img: matrix
+		// direction: 1 or -1
+		// angle: 0, 90, 180, 270
+		const imageClone = img // flip and rotate operate in place
+		return add(multiply(rotate(flip(imgClone, direction), angle), contrast), brightness)
+	}
+
+
+	function rotate(img, angle){
+		// angle: 0, 90, 180, 270{
+		const rotations = Math.floor(angle / 90)
+		for(let i = 0; i < rotations; i++){
+			img.reverse()
+			img = math.transpose(img)
+		}
+		return img
+	}
+
+	function flip(img, direction){
+		// direction: 1 or -1
+		// only flip along the x axis if direction = -1
+		if(direction == -1) {
+			// Flip rows order
+			img = img.reverse()
+		}
+		return img
+	}
 
 	document.addEventListener("DOMContentLoaded", convertImgToCanvas);
 
