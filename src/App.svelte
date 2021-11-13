@@ -148,32 +148,40 @@
     return transformations
   }
 
+  function decompressUserJSON(){
+    const json = JSON.parse(document.querySelector('#userJSON').value)
+    drawJSON(json, '#decompressedImage')
+  }
+
   async function decompressDummyImage(){
     fetch('monkey_test.json')
       .then(response => response.json())
       .then( (compressedImageData) => {
-        console.log(compressedImageData)
-        const { transformations, source_size, destination_size, step } = compressedImageData
-        const decompressedImages = decompress(transformations, source_size, destination_size, step)
-        const canvas = document.getElementById('decompressedMonkey')
-        const ctx = canvas.getContext('2d')
-        const lastImage = decompressedImages[decompressedImages.length -1]
-        for(let y = 0; y < lastImage.length; y++){
-          for(let x = 0; x < lastImage[y].length; x++){
-            ctx.beginPath()
-            const grayScaleValue = Math.floor(lastImage[y][x])
-            ctx.fillStyle = `rgb(
-              ${grayScaleValue},
-              ${grayScaleValue},
-              ${grayScaleValue}
-            )`
-            ctx.fillRect(x, y, 1, 1)
-            ctx.fill()
-          }
-        }
-        console.log(decompressedImages)
+        drawJSON(compressedImageData, '#decompressedMonkey')
       })
   }
+
+  function drawJSON(json, canvasSelector){
+    const { transformations, source_size, destination_size, step } = json
+    const decompressedImages = decompress(transformations, source_size, destination_size, step)
+    const canvas = document.querySelector(canvasSelector)
+    const ctx = canvas.getContext('2d')
+    const lastImage = decompressedImages[decompressedImages.length -1]
+    for(let y = 0; y < lastImage.length; y++){
+      for(let x = 0; x < lastImage[y].length; x++){
+        ctx.beginPath()
+        const grayScaleValue = Math.floor(lastImage[y][x])
+        ctx.fillStyle = `rgb(
+          ${grayScaleValue},
+          ${grayScaleValue},
+          ${grayScaleValue}
+        )`
+        ctx.fillRect(x, y, 1, 1)
+        ctx.fill()
+      }
+    }
+  }
+
 
 	function decompress(transformations, source_size, destination_size, step, iterations=8){
 	  // transformations: Matrix with transformation metadata at each point (x, y)
@@ -257,10 +265,6 @@
 
 	document.addEventListener("DOMContentLoaded", convertImgToCanvas);
 
-	let fifPlaceholder = {
-		source_size: 8,
-	};
-
 	onMount(() => {
 	});
 </script>
@@ -281,13 +285,13 @@
 
 	<div>
 		<h2>FIF</h2>
-		<textarea placeholder="Insert compressed image data">{fifPlaceholder}</textarea>
+		<textarea id="userJSON" placeholder="Insert compressed image data"></textarea>
 	</div>
 
 	<div>
 		<h2>Decompress</h2>
 		<canvas id="decompressedImage" width="256" height="256" />
-		<button on:click={decompress}> Decompress </button>
+		<button on:click={decompressUserJSON}> Decompress </button>
 	</div>
 
   <div>
