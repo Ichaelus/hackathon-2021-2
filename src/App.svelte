@@ -4,7 +4,8 @@
 
 	function handleCompress() {
 		const convertedImage = document.getElementById("convertedImage");
-		const fifPlaceholder = compress(convertedImage, 8, 4, 8)
+		fifPlaceholder = compress(convertedImage, 8, 4, 8)
+		console.log(fifPlaceholder)
 		fifPlaceholder = JSON.stringify(fifPlaceholder)
 	}
 
@@ -74,15 +75,15 @@
 
   function get_greyscale_image(img) {
     let rgbaSize = 4
-    let imgData = new Uint8ClampedArray(img.data.length / rgbaSize)
+    let ctr = 0
+    let imgData = []
 
-    for(let i = 0; i < img.data.length; i += rgbaSize) {
-      let [r, g, b, a] = img.data.slice(i, rgbaSize)
+    for(let i = 0; i < img.data.length; i += rgbaSize, ctr++) {
+      let [r, g, b, a] = img.data.slice(i, i+rgbaSize)
       // 255 red, 80 green, 22 blue, a = 0.2 => 119 * 0.2
-      imgData[i] = mean(r, g, b) * a
+      imgData[ctr] = mean(r, g, b, a)
     }
-
-    return reshape(imgData, img.height())
+    return reshape(imgData, [img.height, img.width])
   }
 
   function find_contrast_and_brightness(D, S) {
@@ -116,8 +117,8 @@
 
     let transformations = []
     let transformed_blocks = generate_all_transformed_blocks(img, source_size, destination_size, step)
-    let i_count = Math.floor(img.width / destination_size)
-    let j_count = Math.floor(img.height / destination_size)
+    let i_count = Math.floor(img.canvas.width / destination_size)
+    let j_count = Math.floor(img.canvas.height / destination_size)
 
     for (let i = 0; i < i_count; i++) {
       transformations.push([]);
@@ -128,13 +129,14 @@
 
         let DColored = img.getImageData(i * destination_size, j * destination_size, destination_size, destination_size)
         let D = get_greyscale_image(DColored)
-
+        debugger
         // Test all possible transformations and take the best one
         for (let [k, l, direction, angle, S] of transformed_blocks) {
+          debugger
           let [contrast, brightness] = find_contrast_and_brightness(D, S)
           S = add(multiply(contrast, S), brightness)
           let d = sum(square(subtract(D, S)))
-
+          debugger
           if (d < min_d) {
             min_d = d
             transformations[i][j] = [k, l, direction, angle, contrast, brightness]
