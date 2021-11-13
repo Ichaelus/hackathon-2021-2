@@ -1,6 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
+<<<<<<< Updated upstream
 	import { multiply, add, zeros } from 'mathjs'
+=======
+	import { multiply, add, xgcd, subset, zeros, mean } from 'mathjs'
+>>>>>>> Stashed changes
 
 	function convertImgToCanvas() {
 		const srcImage = document.getElementById("srcImage");
@@ -168,6 +172,23 @@
 		return add(multiply(rotate(flip(imgClone, direction), angle), contrast), brightness)
 	}
 
+	function matrixSubset(matrix, x1, x2, y1, y2) {
+    	return matrix.slice(x1, x2).map(i => i.slice(y1, y2))
+	}
+
+	function reduce(matrix, factor) {
+		let width = Math.floor(matrix.length / factor);
+		let height = Math.floor(matrix[0].length / factor);
+		let c = zeros(width, height)._data;
+
+		for(let x=0;x<width;x++){
+			for(let y=0;y<width;y++){
+				c[x][y] = mean(matrixSubset(matrix, x*factor, (x+1) * factor, y*factor, (y+1)*factor));
+			}
+		}
+		return c;
+
+	}
 
 	function rotate(img, angle){
 		// angle: 0, 90, 180, 270{
@@ -191,6 +212,7 @@
 
 	document.addEventListener("DOMContentLoaded", convertImgToCanvas);
 
+	debugger
 	let fifPlaceholder = {
 		source_size: 8,
 	};
