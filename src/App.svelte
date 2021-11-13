@@ -2,11 +2,19 @@
 	import { onMount } from 'svelte';
 	import { multiply, add, zeros, reshape, subtract, mean, square, transpose, sum } from 'mathjs'
 
+  let fifData = ""
+
 	function handleCompress() {
 		const convertedImage = document.getElementById("convertedImage");
-		fifPlaceholder = compress(convertedImage, 8, 4, 8)
-		console.log(fifPlaceholder)
-		fifPlaceholder = JSON.stringify(fifPlaceholder)
+		const transformations = compress(convertedImage, 8, 4, 8)
+    const json = {
+      "source_size": 8,
+      "destination_size": 4,
+      "step": 8,
+      "transformations": transformations
+    }
+
+    fifData = JSON.stringify(json)
 	}
 
 	const directions = [1, -1]
@@ -122,19 +130,18 @@
     for (let i = 0; i < i_count; i++) {
       transformations.push([]);
       for (let j = 0; j < j_count; j++) {
+        console.log(`New block ${i} ${j}`)
         transformations[i].push([])
         let min_d = Infinity
         // Extract the destination block
 
         let DColored = img.getImageData(i * destination_size, j * destination_size, destination_size, destination_size)
         let D = get_greyscale_image(DColored)
-        debugger
         // Test all possible transformations and take the best one
         for (let [k, l, direction, angle, S] of transformed_blocks) {
           let [contrast, brightness] = find_contrast_and_brightness(D, S)
           S = add(multiply(contrast, S), brightness)
           let d = sum(square(subtract(D, S)))
-          debugger
           if (d < min_d) {
             min_d = d
             transformations[i][j] = [k, l, direction, angle, contrast, brightness]
@@ -277,13 +284,13 @@
 
 	<div>
 		<h2>Compress</h2>
-		<canvas id="convertedImage" width="256" height="256" />
+		<canvas id="convertedImage" width="64" height="64" />
 		<button on:click={handleCompress}> Compress </button>
 	</div>
 
 	<div>
 		<h2>FIF</h2>
-		<textarea id="userJSON" placeholder="Insert compressed image data"></textarea>
+		<textarea id="userJSON" placeholder="Insert compressed image data">{fifData}</textarea>
 	</div>
 
 	<div>
