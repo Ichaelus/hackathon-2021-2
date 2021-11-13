@@ -1,10 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
-<<<<<<< Updated upstream
-	import { multiply, add, zeros } from 'mathjs'
-=======
-	import { multiply, add, xgcd, subset, zeros, mean } from 'mathjs'
->>>>>>> Stashed changes
+	import { multiply, add, xgcd, zeros, reshape, subtract, zeros, mean, index, subset, square } from 'mathjs'
+
+	const directions = [1, -1]
+	const angles = [0, 90, 180, 270]
+	const candidates = [[1, 0], [1, 90], [1, 180], [1, 270], [-1, 0], [-1, 90], [-1, 180], [-1, 270]]
 
 	function convertImgToCanvas() {
 		const srcImage = document.getElementById("srcImage");
@@ -17,6 +17,18 @@
 		};
 	}
 
+  function reduce(S, factor) {
+	  const size = Math.floor(S.size / factor);
+	  let result = zeros(size)
+	  for (let i=0; i<size; i++) {
+		for (let j=0; j<size; j++) {
+			result[i][j] = MathJS.mean(MathJS.subset(S, MathJS.index([i*factor, j*factor], size)))
+		}
+	  }
+
+	  return result
+  }
+
   function generate_all_transformed_blocks(img, source_size, destination_size, step) {
     let factor = Math.floor(source_size / destination_size)
     let transformed_blocks = []
@@ -25,49 +37,55 @@
       for (let l = 0; l < img.height - source_size; l += step) {
         let SUnreduced = img.getImageData(k, l, source_size, source_size)
         let SGrayscaled = get_greyscale_image(SUnreduced)
+		let S = reduce(SGrayscaled, factor)
 
-
-        //S = reduce(img[k*step:k*step+source_size,l*step:l*step+source_size], factor)
+		for (let [direction, angle] in candidates) {
+	    	transformed_blocks.push((k, l, direction, angle, apply_transformation(S, direction, angle)))
+		}
       }
     }
-    //   def generate_all_transformed_blocks(img, source_size, destination_size, step):
-    // factor = source_size // destination_size
-    // transformed_blocks = []
-    // for k in range((img.shape[0] - source_size) // step + 1):
-    //     for l in range((img.shape[1] - source_size) // step + 1):
-    //         # Extract the source block and reduce it to the shape of a destination block
-    //         S = reduce(img[k*step:k*step+source_size,l*step:l*step+source_size], factor)
-    //         # Generate all possible transformed blocks
-    //         for direction, angle in candidates:
-    //             transformed_blocks.append((k, l, direction, angle, apply_transformation(S, direction, angle)))
-    // return transformed_blocks
+
+	return transformed_blocks
   }
+
+//   function get_greyscale_image(img) {
+//     let rgbaSize = 4
+//     let matrix = []
+
+//     for(let height=0; height < img.height; height++) {
+//       let array = []
+//       for(let width=0; width < img.width * rgbaSize; width += rgbaSize) {
+//         let sliceStart = height * img.width + width
+//         let [r, g, b, a] = img.data.slice(sliceStart, sliceStart + rgbaSize)
+
+//         debugger
+//         array.push(MathJS.mean(r, g, b) * a)
+//       }
+
+//       matrix.push(array)
+//     }
+
+//     return matrix
+//   }
 
   function get_greyscale_image(img) {
     let rgbaSize = 4
-    let matrix = []
+    let imgData = new Uint8ClampedArray(img.data.length / rgbaSize)
 
-    for(let height=0; height < img.height; height++) {
-      let array = []
-      for(let width=0; width < img.width * rgbaSize; width += rgbaSize) {
-        let sliceStart = height * img.width + width
-        let [r, g, b, a] = img.data.slice(sliceStart, sliceStart + rgbaSize)
-
-        debugger
-        array.push(MathJS.mean(r, g, b) * a)
-      }
-
-      matrix.push(array)
+    for(let i = 0; i < img.data.length; i += rgbaSize) {
+      let [r, g, b, a] = img.data.slice(i, rgbaSize)
+      // 255 red, 80 green, 22 blue, a = 0.2 => 119 * 0.2
+      imgData[i] = mean(r, g, b) * a
     }
 
-    return matrix
+    return reshape(imgData, img.height())
   }
 
   function find_contrast_and_brightness(D, S) {
     let contrast = 0.75
 
     // D[1, 2, 5, 4] - 0.75 * D[4, 1, 3, 7]
-    let brightness = MathJS.sum(MathJS.subtract(D, MathJS.multiply(contrast, S))) / D.length
+    let brightness = sum(subtract(D, multiply(contrast, S))) / D.length
     return [contrast, brightness]
 
     // [12, 2,12 ,34 ,4 ,34, 43
@@ -110,8 +128,8 @@
         // Test all possible transformations and take the best one
         for (let [k, l, direction, angle, S] of transformed_blocks) {
           let [contrast, brightness] = find_contrast_and_brightness(D, S)
-          S = MathJS.add(MathJS.multiply(contrast, S), brightness)
-          let d = MathJS.sum(MathJS.square(MathJS.subtract(D, S)))
+          S = add(multiply(contrast, S), brightness)
+          let d = sum(square(subtract(D, S)))
 
           if (d < min_d) {
             min_d = d
