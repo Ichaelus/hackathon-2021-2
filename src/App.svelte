@@ -1,6 +1,11 @@
 <script>
 	import { onMount } from 'svelte';
 	import { multiply, add, zeros, reshape, subtract, mean, square, transpose, sum } from 'mathjs'
+	import { GPU } from 'gpu.js';
+  
+  const gpu = new GPU({
+    // mode: 'dev' //debug
+  })
 
   let fifData = ""
 
@@ -197,6 +202,7 @@
   	const factor = Math.floor(source_size / destination_size)
     const height = transformations.length * destination_size
     const width = transformations[0].length * destination_size
+
     let decompressedImages = []
     decompressedImages.push(zeros(height, width)._data)
 		for(let iteration = 0; iteration < iterations; iteration++){
@@ -210,6 +216,12 @@
        		const reducedImage = reduce(matrixSubset(lastImage, sourceY * step, sourceY * step + source_size, sourceX * step, sourceX * step + source_size), factor)
        		const transformedImage = apply_transformation(reducedImage, flip, angle, contrast, brightness)
           
+          // hard to do in the GPU as we replace only a subset of currentImage - we cannot use the "result" nor iterate over pixels
+          // const modifyImage = gpu.createKernel(function(transformedImage, destination_size, transformationY, transformationX) {
+          //   return transformedImage[this.thread.y - transformationY / destination_size][this.thread.x - transformationX / destination_size]
+          // }).setOutput([reducedWidth, reducedHeight]);
+
+          // currentImage = modifyImage(transformedImage, destination_size, y, x).map((y) => Array.from(y))
           for(let dY = 0; dY < transformedImage.length; dY++) {
             for(let dX = 0; dX < transformedImage[dY].length; dX++) {
               currentImage[y * destination_size + dY][x * destination_size + dX] = transformedImage[dY][dX]
@@ -227,25 +239,59 @@
 		// direction: 1 or -1
 		// angle: 0, 90, 180, 270
 		const imageClone = img // flip and rotate operate in place
-		return add(multiply(rotate(flip(imageClone, direction), angle), contrast), brightness)
+    // todo: matrix multiplication is part of gpu.js' readme
+
+		return gpuModify(rotate(flip(imageClone, direction), angle), contrast, brightness)
 	}
 
+  function gpuModify(matrix, multiply = 1, add = 0){
+    const width = matrix.length
+    const height = matrix[0].length
+    const multiplyMatrix = gpu.createKernel(function(matrix, multiply, add) {
+      return matrix[this.thread.y][this.thread.x] * multiply + add
+    }).setOutput([width, height]);
+
+    return multiplyMatrix(matrix, multiply, add)
+  }
+
+  function gpuMultiply(matrix, number){
+    return gpuModify(matrix, number)
+  }
+
+  function gpuAdd(matrix, number){
+    return gpuModify(matrix, 0, number)
+  }
+  
 	function matrixSubset(matrix, x1, x2, y1, y2) {
-    	return matrix.slice(x1, x2).map(i => i.slice(y1, y2))
+    return matrix.slice(x1, x2).map(i => i.slice(y1, y2))
 	}
+
+  function submatrixMean(matrix, startY, endY, startX, endX) {
+    var total = 0;
+    var count = 0;
+
+    for(let y = startY; y < endY; y++){
+				for(let x = startX; x < endX; x++){
+        total += matrix[y][x];
+        count++;
+      }
+    }
+
+    return total / count;
+  }
+  gpu.addFunction(submatrixMean)
 
 	function reduce(matrix, factor) {
 		let width = Math.floor(matrix.length / factor);
 		let height = Math.floor(matrix[0].length / factor);
-		let c = zeros(width, height)._data;
 
-		for(let x=0;x<width;x++){
-			for(let y=0;y<width;y++){
-				c[x][y] = mean(matrixSubset(matrix, x*factor, (x+1) * factor, y*factor, (y+1)*factor));
-			}
-		}
-		return c;
+    const reduceMatrix = gpu.createKernel(function(matrix, factor) {
+      return submatrixMean(matrix, this.thread.y*factor, ( this.thread.y+1) * factor,  this.thread.x*factor, ( this.thread.x+1)*factor)
+    }).setOutput([width, height]);
 
+    // Output is always typed (Float32Array) but must be Array for math.js
+    // currently extremely cost intensive to transform the output
+    return reduceMatrix(matrix, factor).map((y) => Array.from(y))
 	}
 
 	function rotate(img, angle){
@@ -258,14 +304,14 @@
 		return img
 	}
 
-	function flip(img, direction){
+	function flip(matrix, direction){
 		// direction: 1 or -1
 		// only flip along the x axis if direction = -1
 		if(direction == -1) {
 			// Flip rows order
-			img = img.reverse()
+			matrix = matrix.reverse()
 		}
-		return img
+		return matrix
 	}
 
 	document.addEventListener("DOMContentLoaded", convertImgToCanvas);
