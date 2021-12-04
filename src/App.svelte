@@ -8,7 +8,7 @@
     mode: 'dev' // idk why but dev and cpu are the fastest on my machine
   })
 
-  let fifData = ""
+  let fifData = localStorage.getItem('lastCompressedJSON')
 
 	function handleCompress() {
 		const convertedImage = document.getElementById("convertedImage");
@@ -21,6 +21,7 @@
     }
 
     fifData = JSON.stringify(json)
+    localStorage.setItem('lastCompressedJSON', fifData);
 	}
 
 	const directions = [1, -1]
@@ -34,7 +35,7 @@
 			const convertedImage = document.getElementById("convertedImage");
 			const context = convertedImage.getContext("2d");
 
-			context.drawImage(srcImage, 0, 0, 256, 256);
+			context.drawImage(srcImage, 0, 0, 128, 128);
 		};
 	}
 
@@ -358,7 +359,7 @@
 
 	<div>
 		<h2>Compress</h2>
-		<canvas id="convertedImage" width="256" height="256" />
+		<canvas id="convertedImage" width="128" height="128" />
 		<button on:click={handleCompress}> Compress </button>
 	</div>
 
@@ -369,7 +370,7 @@
 
 	<div>
 		<h2>Decompress</h2>
-		<canvas id="decompressedImage" width="256" height="256" />
+		<canvas id="decompressedImage" width="128" height="128" />
 		<button on:click={decompressUserJSON}> Decompress </button>
 	</div>
 
