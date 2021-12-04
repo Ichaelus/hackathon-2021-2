@@ -1,10 +1,11 @@
 <script>
 	import { onMount } from 'svelte';
-	import { multiply, add, zeros, reshape, subtract, mean, square, transpose, sum } from 'mathjs'
+	import { zeros, reshape, mean, transpose } from 'mathjs'
 	import { GPU } from 'gpu.js';
   
   const gpu = new GPU({
-    // mode: 'dev' //debug
+    // mode: 'dev', 'webgl', 'webgl2', 'headlessgl', 'cpu'
+    mode: 'dev' // idk why but dev and cpu are the fastest on my machine
   })
 
   let fifData = ""
@@ -33,7 +34,7 @@
 			const convertedImage = document.getElementById("convertedImage");
 			const context = convertedImage.getContext("2d");
 
-			context.drawImage(srcImage, 0, 0, 64, 64);
+			context.drawImage(srcImage, 0, 0, 256, 256);
 		};
 	}
 
@@ -98,11 +99,11 @@
     return reshape(imgData, [img.height, img.width])
   }
 
-  function find_contrast_and_brightness(D, S) {
+  function find_contrast_and_brightness(matrix, otherMatrix) {
     let contrast = 0.75
 
-    // D[1, 2, 5, 4] - 0.75 * D[4, 1, 3, 7]
-    let brightness = sum(subtract(D, multiply(contrast, S))) / D.length
+    // matrix[1, 2, 5, 4] - 0.75 * matrix[4, 1, 3, 7]
+    let brightness = (matrixSum(matrix) - contrast * matrixSum(otherMatrix)) / matrix.length
     return [contrast, brightness]
 
     // [12, 2,12 ,34 ,4 ,34, 43
@@ -122,6 +123,11 @@
     //     #x = optimize.lsq_linear(A, b, [(-np.inf, -2.0), (np.inf, 2.0)]).x
     //     return x[1], x[0]
   }
+
+  const gpuSquareSubstracted = gpu.createKernel(function(matrix, otherMatrix) {
+    const substracted = matrix[this.thread.y][this.thread.x] - otherMatrix[this.thread.y][this.thread.x]
+    return substracted * substracted
+  }, { dynamicOutput: true })
 
 	function compress(canvas, source_size, destination_size, step) {
     let img = canvas.getContext('2d')
@@ -145,8 +151,13 @@
         // Test all possible transformations and take the best one
         for (let [k, l, direction, angle, S] of transformed_blocks) {
           let [contrast, brightness] = find_contrast_and_brightness(D, S)
-          S = add(multiply(contrast, S), brightness)
-          let d = sum(square(subtract(D, S)))
+
+          multiplyMatrix.setOutput([destination_size, destination_size]);
+          gpuSquareSubstracted.setOutput([destination_size, destination_size])
+          
+          multiplyMatrix.setPipeline(true)
+          S = multiplyMatrix(S, contrast, brightness)
+          let d = matrixSum(gpuSquareSubstracted(D, S))
           if (d < min_d) {
             min_d = d
             transformations[i][j] = [k, l, direction, angle, contrast, brightness]
@@ -191,7 +202,6 @@
       }
     }
   }
-
 
 	function decompress(transformations, source_size, destination_size, step, iterations=8){
 	  // transformations: Matrix with transformation metadata at each point (x, y)
@@ -239,19 +249,21 @@
 		// direction: 1 or -1
 		// angle: 0, 90, 180, 270
 		const imageClone = img // flip and rotate operate in place
-    // todo: matrix multiplication is part of gpu.js' readme
 
-		return gpuModify(rotate(flip(imageClone, direction), angle), contrast, brightness)
+		return gpuModify(rotate(flip(img, direction), angle), contrast, brightness)
 	}
 
-  function gpuModify(matrix, multiply = 1, add = 0){
+  const multiplyMatrix = gpu.createKernel(function(matrix, multiplicant, summand) {
+    return matrix[this.thread.y][this.thread.x] * multiplicant + summand
+  }, { dynamicOutput: true })
+
+  function gpuModify(matrix, multiplicant = 1, summand = 0){
     const width = matrix.length
     const height = matrix[0].length
-    const multiplyMatrix = gpu.createKernel(function(matrix, multiply, add) {
-      return matrix[this.thread.y][this.thread.x] * multiply + add
-    }).setOutput([width, height]);
 
-    return multiplyMatrix(matrix, multiply, add)
+    multiplyMatrix.setOutput([width, height]);
+    multiplyMatrix.setPipeline(false)
+    return multiplyMatrix(matrix, multiplicant, summand)
   }
 
   function gpuMultiply(matrix, number){
@@ -263,15 +275,29 @@
   }
   
 	function matrixSubset(matrix, x1, x2, y1, y2) {
+    // slice + arrow functions are not allowed for gpu.js
     return matrix.slice(x1, x2).map(i => i.slice(y1, y2))
 	}
+
+  function matrixSum(matrix) {
+    var total = 0;
+
+    for(let y = 0; y < matrix.length; y++){
+      for(let x = 0; x < matrix[y].length; x++){
+        total += matrix[y][x];
+      }
+    }
+
+    return total;
+  }
+  gpu.addFunction(matrixSum)
 
   function submatrixMean(matrix, startY, endY, startX, endX) {
     var total = 0;
     var count = 0;
 
     for(let y = startY; y < endY; y++){
-				for(let x = startX; x < endX; x++){
+      for(let x = startX; x < endX; x++){
         total += matrix[y][x];
         count++;
       }
@@ -281,16 +307,18 @@
   }
   gpu.addFunction(submatrixMean)
 
+  const reduceMatrix = gpu.createKernel(function(matrix, factor) {
+    return submatrixMean(matrix, this.thread.y*factor, ( this.thread.y+1) * factor,  this.thread.x*factor, ( this.thread.x+1)*factor)
+  }, { dynamicOutput: true })
+
 	function reduce(matrix, factor) {
 		let width = Math.floor(matrix.length / factor);
 		let height = Math.floor(matrix[0].length / factor);
-
-    const reduceMatrix = gpu.createKernel(function(matrix, factor) {
-      return submatrixMean(matrix, this.thread.y*factor, ( this.thread.y+1) * factor,  this.thread.x*factor, ( this.thread.x+1)*factor)
-    }).setOutput([width, height]);
+    reduceMatrix.setOutput([width, height]);
 
     // Output is always typed (Float32Array) but must be Array for math.js
     // currently extremely cost intensive to transform the output
+    // Todo get rid of this map by rewriting transpose below
     return reduceMatrix(matrix, factor).map((y) => Array.from(y))
 	}
 
@@ -330,7 +358,7 @@
 
 	<div>
 		<h2>Compress</h2>
-		<canvas id="convertedImage" width="64" height="64" />
+		<canvas id="convertedImage" width="256" height="256" />
 		<button on:click={handleCompress}> Compress </button>
 	</div>
 
