@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { zeros, reshape, mean, transpose } from 'mathjs'
+	import { zeros, reshape, mean } from 'mathjs'
 	import { GPU } from 'gpu.js';
   
   const gpu = new GPU({
@@ -320,7 +320,7 @@
     // Output is always typed (Float32Array) but must be Array for math.js
     // currently extremely cost intensive to transform the output
     // Todo get rid of this map by rewriting transpose below
-    return reduceMatrix(matrix, factor).map((y) => Array.from(y))
+    return reduceMatrix(matrix, factor)
 	}
 
 	function rotate(img, angle){
@@ -328,10 +328,15 @@
 		const rotations = Math.floor(angle / 90)
 		for(let i = 0; i < rotations; i++){
 			img.reverse()
-			img = transpose(img)
+      gpuTranspose.setOutput([img[0].length, img.length])
+			img = gpuTranspose(img)
 		}
 		return img
 	}
+
+  const gpuTranspose = gpu.createKernel(function(matrix) {
+    return matrix[this.thread.x][this.thread.y] // transpose: switch x and y
+  }, { dynamicOutput: true })
 
 	function flip(matrix, direction){
 		// direction: 1 or -1
