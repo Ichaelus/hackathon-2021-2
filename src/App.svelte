@@ -1,7 +1,7 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount } from 'svelte'
 	import { zeros, reshape, mean } from 'mathjs'
-	import { GPU } from 'gpu.js';
+	import { GPU } from 'gpu.js'
   
   const gpu = new GPU({
     // mode: 'dev', 'webgl', 'webgl2', 'headlessgl', 'cpu'
@@ -11,7 +11,7 @@
   let fifData = localStorage.getItem('lastCompressedJSON')
 
 	function handleCompress() {
-		const convertedImage = document.getElementById("convertedImage");
+		const convertedImage = document.getElementById("convertedImage")
 		const transformations = compress(convertedImage, 8, 4, 8)
     const json = {
       "source_size": 8,
@@ -21,74 +21,47 @@
     }
 
     fifData = JSON.stringify(json)
-    localStorage.setItem('lastCompressedJSON', fifData);
+    localStorage.setItem('lastCompressedJSON', fifData)
 	}
 
-	const directions = [1, -1]
-	const angles = [0, 90, 180, 270]
-	const candidates = [[1, 0], [1, 90], [1, 180], [1, 270], [-1, 0], [-1, 90], [-1, 180], [-1, 270]]
+	// const directions = [1, -1]
+	// const angles = [90, 180, 270, 0]
+	const candidates = [
+    [1, 0], [1, 90], [1, 180], [1, 270],
+    [-1, 0], [-1, 90], [-1, 180], [-1, 270]
+  ]
 
 	function convertImgToCanvas() {
-		const srcImage = document.getElementById("srcImage");
+		const srcImage = document.getElementById("srcImage")
 
 		srcImage.onload = function () {
-			const convertedImage = document.getElementById("convertedImage");
-			const context = convertedImage.getContext("2d");
+			const convertedImage = document.getElementById("convertedImage")
+			const context = convertedImage.getContext("2d")
 
-			context.drawImage(srcImage, 0, 0, 128, 128);
-		};
+			context.drawImage(srcImage, 0, 0, 128, 128)
+		}
 	}
 
-//   function reduce(S, factor) {
-// 	  const size = Math.floor(S.size / factor);
-// 	  let result = zeros(size)
-// 	  for (let i=0; i<size; i++) {
-// 		for (let j=0; j<size; j++) {
-// 			result[i][j] = mean(subset(S, index([i*factor, j*factor], size)))
-// 		}
-// 	  }
-
-// 	  return result
-//   }
-
   function generate_all_transformed_blocks(img, source_size, destination_size, step) {
-    let factor = Math.floor(source_size / destination_size)
+    const factor = Math.floor(source_size / destination_size)
     let transformed_blocks = []
 
-    for (let k = 0; k < img.canvas.width - source_size; k += step) {
-      for (let l = 0; l < img.canvas.height - source_size; l += step) {
-        let SUnreduced = img.getImageData(k, l, source_size, source_size)
-        let SGrayscaled = get_greyscale_image(SUnreduced)
-		    let S = reduce(SGrayscaled, factor)
+    for (let y = 0; y < img.canvas.height - source_size; y += step) {
+      for (let x = 0; x < img.canvas.width - source_size; x += step) {
+        const SUnreduced = img.getImageData(y, x, source_size, source_size)
+        const SGrayscaled = get_greyscale_image(SUnreduced)
+		    const S = reduce(SGrayscaled, factor)
         for (let [direction, angle] of candidates) {
-          transformed_blocks.push([k/8, l/8, direction, angle, apply_transformation(S, direction, angle)])
+          transformed_blocks.push([y/8, x/8, direction, angle, apply_transformation(S, direction, angle)])
         }
       }
     }
 
-	return transformed_blocks
+	  return transformed_blocks
   }
 
-//   function get_greyscale_image(img) {
-//     let rgbaSize = 4
-//     let matrix = []
-
-//     for(let height=0; height < img.height; height++) {
-//       let array = []
-//       for(let width=0; width < img.width * rgbaSize; width += rgbaSize) {
-//         let sliceStart = height * img.width + width
-//         let [r, g, b, a] = img.data.slice(sliceStart, sliceStart + rgbaSize)
-//         array.push(MathJS.mean(r, g, b) * a)
-//       }
-
-//       matrix.push(array)
-//     }
-
-//     return matrix
-//   }
-
   function get_greyscale_image(img) {
-    let rgbaSize = 4
+    const rgbaSize = 4
     let ctr = 0
     let imgData = []
 
@@ -101,28 +74,9 @@
   }
 
   function find_contrast_and_brightness(matrix, otherMatrix) {
-    let contrast = 0.75
-
-    // matrix[1, 2, 5, 4] - 0.75 * matrix[4, 1, 3, 7]
-    let brightness = (matrixSum(matrix) - contrast * matrixSum(otherMatrix)) / matrix.length
+    const contrast = 0.75
+    const brightness = (matrixSum(matrix) - contrast * matrixSum(otherMatrix)) / matrix.length
     return [contrast, brightness]
-
-    // [12, 2,12 ,34 ,4 ,34, 43
-
-
-    // def find_contrast_and_brightness1(D, S):
-    //   # Fix the contrast and only fit the brightness
-    //   contrast = 0.75
-    //   brightness = (np.sum(D - contrast*S)) / D.size
-    //   return contrast, brightness
-    //
-    // def find_contrast_and_brightness2(D, S):
-    //     # Fit the contrast and the brightness
-    //     A = np.concatenate((np.ones((S.size, 1)), np.reshape(S, (S.size, 1))), axis=1)
-    //     b = np.reshape(D, (D.size,))
-    //     x, _, _, _ = np.linalg.lstsq(A, b)
-    //     #x = optimize.lsq_linear(A, b, [(-np.inf, -2.0), (np.inf, 2.0)]).x
-    //     return x[1], x[0]
   }
 
   const gpuSquareSubstracted = gpu.createKernel(function(matrix, otherMatrix) {
@@ -131,37 +85,37 @@
   }, { dynamicOutput: true })
 
 	function compress(canvas, source_size, destination_size, step) {
-    let img = canvas.getContext('2d')
+    const img = canvas.getContext('2d')
     // let img = context.getImageData(0, 0, context.width, context.height)
 
     let transformations = []
-    let transformed_blocks = generate_all_transformed_blocks(img, source_size, destination_size, step)
-    let i_count = Math.floor(img.canvas.width / destination_size)
-    let j_count = Math.floor(img.canvas.height / destination_size)
+    const transformed_blocks = generate_all_transformed_blocks(img, source_size, destination_size, step)
+    const y_count = Math.floor(img.canvas.height / destination_size)
+    const x_count = Math.floor(img.canvas.width / destination_size)
 
-    for (let i = 0; i < i_count; i++) {
-      transformations.push([]);
-      for (let j = 0; j < j_count; j++) {
-        console.log(`New block ${i} ${j}`)
-        transformations[i].push([])
+    for (let y = 0; y < y_count; y++) {
+      transformations.push([])
+      for (let x = 0; x < x_count; x++) {
+        console.log(`New block ${y} ${x}`)
+        transformations[y].push([])
         let min_d = Infinity
         // Extract the destination block
 
-        let DColored = img.getImageData(i * destination_size, j * destination_size, destination_size, destination_size)
-        let D = get_greyscale_image(DColored)
+        const DColored = img.getImageData(y * destination_size, x * destination_size, destination_size, destination_size)
+        const D = get_greyscale_image(DColored)
         // Test all possible transformations and take the best one
         for (let [k, l, direction, angle, S] of transformed_blocks) {
-          let [contrast, brightness] = find_contrast_and_brightness(D, S)
+          const [contrast, brightness] = find_contrast_and_brightness(D, S)
 
-          multiplyMatrix.setOutput([destination_size, destination_size]);
+          multiplyMatrix.setOutput([destination_size, destination_size])
           gpuSquareSubstracted.setOutput([destination_size, destination_size])
           
           multiplyMatrix.setPipeline(true)
           S = multiplyMatrix(S, contrast, brightness)
-          let d = matrixSum(gpuSquareSubstracted(D, S))
+          const d = matrixSum(gpuSquareSubstracted(D, S))
           if (d < min_d) {
             min_d = d
-            transformations[i][j] = [k, l, direction, angle, contrast, brightness]
+            transformations[y][x] = [k, l, direction, angle, contrast, brightness]
           }
         }
       }
@@ -262,7 +216,7 @@
     const width = matrix.length
     const height = matrix[0].length
 
-    multiplyMatrix.setOutput([width, height]);
+    multiplyMatrix.setOutput([width, height])
     multiplyMatrix.setPipeline(false)
     return multiplyMatrix(matrix, multiplicant, summand)
   }
@@ -281,46 +235,46 @@
 	}
 
   function matrixSum(matrix) {
-    var total = 0;
+    let total = 0
 
     for(let y = 0; y < matrix.length; y++){
       for(let x = 0; x < matrix[y].length; x++){
-        total += matrix[y][x];
+        total += matrix[y][x]
       }
     }
 
-    return total;
+    return total
   }
   gpu.addFunction(matrixSum)
 
   function submatrixMean(matrix, startY, endY, startX, endX) {
-    var total = 0;
-    var count = 0;
+    let total = 0
+    let count = 0
 
     for(let y = startY; y < endY; y++){
       for(let x = startX; x < endX; x++){
-        total += matrix[y][x];
-        count++;
+        total += matrix[y][x]
+        count++
       }
     }
 
-    return total / count;
+    return total / count
   }
   gpu.addFunction(submatrixMean)
 
-  const reduceMatrix = gpu.createKernel(function(matrix, factor) {
+  const gpuReduceMatrix = gpu.createKernel(function(matrix, factor) {
     return submatrixMean(matrix, this.thread.y*factor, ( this.thread.y+1) * factor,  this.thread.x*factor, ( this.thread.x+1)*factor)
   }, { dynamicOutput: true })
 
 	function reduce(matrix, factor) {
-		let width = Math.floor(matrix.length / factor);
-		let height = Math.floor(matrix[0].length / factor);
-    reduceMatrix.setOutput([width, height]);
+		const width = Math.floor(matrix.length / factor)
+		const height = Math.floor(matrix[0].length / factor)
+    gpuReduceMatrix.setOutput([width, height])
 
     // Output is always typed (Float32Array) but must be Array for math.js
     // currently extremely cost intensive to transform the output
     // Todo get rid of this map by rewriting transpose below
-    return reduceMatrix(matrix, factor)
+    return gpuReduceMatrix(matrix, factor)
 	}
 
 	function rotate(img, angle){
@@ -348,10 +302,10 @@
 		return matrix
 	}
 
-	document.addEventListener("DOMContentLoaded", convertImgToCanvas);
+	document.addEventListener("DOMContentLoaded", convertImgToCanvas)
 
 	onMount(() => {
-	});
+	})
 </script>
 
 <main>
