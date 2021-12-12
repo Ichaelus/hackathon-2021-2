@@ -51,6 +51,5 @@ If you're building a single-page app (SPA) with multiple routes, sirv needs to b
 ```
 ## Using TypeScript
 ## Deploying to github pages
-
-* Push the desired code to the branch `gh-pages`
 * run `node ./gh-pages.js`
+* visit the result here: https://ichaelus.github.io/hackathon-2021-2/ 
