@@ -18,8 +18,9 @@
     "svelte": "^3.0.0"
   },
   "dependencies": {
+    "gh-pages": "^3.2.3",
+    "gpu.js": "< 3",
     "mathjs": "^10.0.0",
-    "sirv-cli": "^1.0.0",
-    "gpu.js": "< 3"
+    "sirv-cli": "^1.0.0"
   }
 }
