@@ -48,7 +48,7 @@
 
     for (let y = 0; y < img.canvas.height - source_size; y += step) {
       for (let x = 0; x < img.canvas.width - source_size; x += step) {
-        const SUnreduced = img.getImageData(y, x, source_size, source_size)
+        const SUnreduced = img.getImageData(x, y, source_size, source_size)
         const SGrayscaled = get_greyscale_image(SUnreduced)
 		    const S = reduce(SGrayscaled, factor)
         for (let [direction, angle] of candidates) {
@@ -101,7 +101,7 @@
         let min_d = Infinity
         // Extract the destination block
 
-        const DColored = img.getImageData(y * destination_size, x * destination_size, destination_size, destination_size)
+        const DColored = img.getImageData(x * destination_size, y * destination_size, destination_size, destination_size)
         const D = get_greyscale_image(DColored)
         // Test all possible transformations and take the best one
         for (let [k, l, direction, angle, S] of transformed_blocks) {
