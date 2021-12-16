@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte'
 	import { zeros, reshape, mean } from 'mathjs'
 	import { GPU } from 'gpu.js'
+  import { LeastSquares } from './least-squares'
   
   const gpu = new GPU({
     // mode: 'dev', 'webgl', 'webgl2', 'headlessgl', 'cpu'
@@ -49,7 +50,7 @@
     for (let y = 0; y < img.canvas.height - source_size; y += step) {
       for (let x = 0; x < img.canvas.width - source_size; x += step) {
         const SUnreduced = img.getImageData(x, y, source_size, source_size)
-        const SGrayscaled = get_greyscale_image(SUnreduced)
+        const SGrayscaled = getGrayscale(SUnreduced)
 		    const S = reduce(SGrayscaled, factor)
         for (let [direction, angle] of candidates) {
           transformed_blocks.push([y/8, x/8, direction, angle, apply_transformation(S, direction, angle)])
@@ -60,25 +61,49 @@
 	  return transformed_blocks
   }
 
-  function get_greyscale_image(img) {
+  
+  function getGrayscale(img) {
     const rgbaSize = 4
     let ctr = 0
     let imgData = []
-
     for(let i = 0; i < img.data.length; i += rgbaSize, ctr++) {
       let [r, g, b, a] = img.data.slice(i, i+rgbaSize)
-      // 255 red, 80 green, 22 blue, a = 0.2 => 119 * 0.2
-      imgData[ctr] = mean(r, g, b)
+      if (r === g && g == b) {
+        imgData[ctr] = r // already grayscale pixel
+      } else {
+        // https://people.math.sc.edu/Burkardt/m_src/image_rgb_to_gray/image_rgb_to_gray.html
+        imgData[ctr] = parseInt(0.2126 * r + 0.7152 * g + 0.0722 * b * (a / 255))
+      }
     }
     return reshape(imgData, [img.height, img.width])
   }
 
-  function find_contrast_and_brightness(matrix, otherMatrix) {
-    const contrast = 0.75
-    const brightness = (matrixSum(matrix) - contrast * matrixSum(otherMatrix)) / matrix.length
+  // Todo: The output does not match the non-GPU method yet
+  // const grayscaleMatrix = gpu.createKernel(function(matrix, rgbaData) {
+  //   const rgbaSize = 4
+  //   const i = (this.thread.x * matrix.height + this.thread.y * matrix.width) * rgbaSize
+  //   const [r, g, b, _a] = rgbaData.slice(i, i + rgbaSize)
+  //   // return mean(r, g, b)// * a
+  //   // https://people.math.sc.edu/Burkardt/m_src/image_rgb_to_gray/image_rgb_to_gray.html
+  //   return parseInt(0.2126 * r + 0.7152 * g + 0.0722 * b)
+  // }, { dynamicOutput: true })
+
+  // function getGrayscale(img) {
+  //   grayscaleMatrix.setOutput([img.height, img.width])
+  //   return grayscaleMatrix(img, img.data)
+  // }
+
+  function findContrastAndBrightness(matrix, otherMatrix) {
+    let squaresResults = {}
+    const singleDimensionMatrix = reshape(matrix, [matrix.length * matrix[0].length])
+    const mathjscompatible = otherMatrix.map(row => Array.from(row))
+    const singleDimensionOtherMatrix = reshape(mathjscompatible, [otherMatrix.length * otherMatrix[0].length])
+    LeastSquares(singleDimensionMatrix, singleDimensionOtherMatrix, squaresResults)
+    let brightness = squaresResults.b
+    let contrast = squaresResults.m
     return [contrast, brightness]
   }
-
+  
   const gpuSquareSubstracted = gpu.createKernel(function(matrix, otherMatrix) {
     const substracted = matrix[this.thread.y][this.thread.x] - otherMatrix[this.thread.y][this.thread.x]
     return substracted * substracted
@@ -98,23 +123,23 @@
       for (let x = 0; x < x_count; x++) {
         console.log(`New block ${y} ${x}`)
         transformations[y].push([])
-        let min_d = Infinity
+        let minimumDelta = Infinity
         // Extract the destination block
 
         const DColored = img.getImageData(x * destination_size, y * destination_size, destination_size, destination_size)
-        const D = get_greyscale_image(DColored)
+        const D = getGrayscale(DColored)
         // Test all possible transformations and take the best one
         for (let [k, l, direction, angle, S] of transformed_blocks) {
-          const [contrast, brightness] = find_contrast_and_brightness(D, S)
+          const [contrast, brightness] = findContrastAndBrightness(D, S)
 
           multiplyMatrix.setOutput([destination_size, destination_size])
           gpuSquareSubstracted.setOutput([destination_size, destination_size])
           
           multiplyMatrix.setPipeline(true)
           S = multiplyMatrix(S, contrast, brightness)
-          const d = matrixSum(gpuSquareSubstracted(D, S))
-          if (d < min_d) {
-            min_d = d
+          const delta = matrixSum(gpuSquareSubstracted(D, S))
+          if (delta < minimumDelta) {
+            minimumDelta = delta
             transformations[y][x] = [k, l, direction, angle, contrast, brightness]
           }
         }
